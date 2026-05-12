@@ -43,7 +43,7 @@ class CalcwiseFreemium {
   bool get isPremium     => isPremiumNotifier.value;
   bool get isRewarded    { if (_initialized) _refreshRewarded(); return isRewardedNotifier.value; }
   bool get hasFullAccess => isPremium || isRewarded;
-  bool get showAds       => !isPremium;
+  bool get showAds       => !hasFullAccess;
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
@@ -141,5 +141,5 @@ class CalcwiseFreemium {
 
   /// Number of history entries the user can store.
   /// Free tier uses [freeCalculationLimit] as the cap (same value, distinct concept).
-  int get historyLimit => isPremium ? 999999 : freeCalculationLimit;
+  int get historyLimit => hasFullAccess ? 999999 : freeCalculationLimit;
 }

@@ -1,6 +1,7 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 
+
 /// Base Firebase Analytics wrapper — shared across all portfolio apps.
 ///
 /// Each app creates its own subclass to add app-specific events:
@@ -21,6 +22,11 @@ class CalcwiseAnalytics {
   final String appName;
 
   final _fa = FirebaseAnalytics.instance;
+
+  /// Enable/disable analytics collection based on build mode.
+  Future<void> initialize() async {
+    await _fa.setAnalyticsCollectionEnabled(!kDebugMode);
+  }
 
   // ── Universal events (same in every app) ──────────────────────────────────
 

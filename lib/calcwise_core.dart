@@ -11,6 +11,7 @@ export 'services/iap_service.dart';
 export 'services/ad_service.dart';
 export 'services/theme_mode_service.dart';
 export 'services/paywall_session_service.dart';
+export 'services/review_service.dart';
 
 // Config
 export 'config/monetization_config.dart';
