@@ -31,8 +31,8 @@ class ThemeModeService {
 
   static const _key = 'theme_mode';
 
-  /// Load saved preference. Falls back to [ThemeMode.dark] on first install
-  /// so the app matches the dark brand splash screens.
+  /// Load saved preference. Falls back to [ThemeMode.system] on first install
+  /// so the app automatically follows the device dark/light setting.
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_key);
@@ -40,7 +40,7 @@ class ThemeModeService {
       'dark'   => ThemeMode.dark,
       'light'  => ThemeMode.light,
       'system' => ThemeMode.system,
-      _        => ThemeMode.dark,   // first install → dark
+      _        => ThemeMode.system, // first install → follow device setting
     };
   }
 
