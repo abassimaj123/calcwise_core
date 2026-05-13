@@ -121,6 +121,27 @@ class CalcwiseAdService {
   @Deprecated('Use onAction() instead — onCalculation() will be removed in v2.0')
   void onCalculation() => onAction();
 
+  // ── Interstitial on-demand ────────────────────────────────────────────────
+
+  /// Show an interstitial immediately (bypassing action threshold), then
+  /// invoke [onDone] after dismissal or if no ad is available.
+  /// Useful for "navigate after ad" patterns.
+  void showInterstitialThen(void Function() onDone) {
+    if (freemium.isPremium || freemium.isRewarded) { onDone(); return; }
+    if (_inter == null) { onDone(); return; }
+    _lastInterTime = DateTime.now();
+    _actionCount   = 0;
+    _inter!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        ad.dispose(); _inter = null; _loadInter(); onDone();
+      },
+      onAdFailedToShowFullScreenContent: (ad, _) {
+        ad.dispose(); _inter = null; _loadInter(); onDone();
+      },
+    );
+    _inter!.show();
+  }
+
   // ── Rewarded ──────────────────────────────────────────────────────────────
 
   bool get isRewardedReady =>
