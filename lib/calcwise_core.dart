@@ -35,3 +35,4 @@ export 'widgets/paywall_hard.dart';
 export 'widgets/insight_card.dart';
 export 'widgets/calcwise_splash.dart';
 export 'widgets/page_entrance.dart';
+export 'widgets/calcwise_onboarding.dart';
