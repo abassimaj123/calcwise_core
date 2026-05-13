@@ -28,7 +28,7 @@ class PaywallHard extends StatelessWidget {
         color: ct.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+      padding: EdgeInsets.fromLTRB(24, 12, 24, 32 + MediaQuery.of(context).viewPadding.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Container(width: 40, height: 4,
             decoration: BoxDecoration(color: ct.cardBorder,
