@@ -107,7 +107,13 @@ class CalcwiseOnboarding extends StatefulWidget {
   final List<OnboardingPage> pages;
 
   /// Screen shown after onboarding completes / is skipped.
-  final Widget nextScreen;
+  /// Supply either [nextScreen] or [onDone] — not both.
+  final Widget? nextScreen;
+
+  /// Called when onboarding completes or is skipped.
+  /// Use this when the destination uses named routes (e.g. apps with private _MainShell).
+  /// Supply either [onDone] or [nextScreen] — not both.
+  final VoidCallback? onDone;
 
   /// Whether to show a "Skip" link on every page except the last.
   final bool showSkip;
@@ -116,9 +122,11 @@ class CalcwiseOnboarding extends StatefulWidget {
     super.key,
     required this.appKey,
     required this.pages,
-    required this.nextScreen,
+    this.nextScreen,
+    this.onDone,
     this.showSkip = true,
-  });
+  }) : assert(nextScreen != null || onDone != null,
+            'Provide either nextScreen or onDone');
 
   @override
   State<CalcwiseOnboarding> createState() => _CalcwiseOnboardingState();
@@ -147,13 +155,17 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
   Future<void> _finish() async {
     await markOnboardingComplete(widget.appKey);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(PageRouteBuilder(
-      pageBuilder:        (_, __, ___) => widget.nextScreen,
-      transitionsBuilder: (_, anim, __, child) =>
-          FadeTransition(opacity: anim, child: child),
-      transitionDuration:        const Duration(milliseconds: 250),
-      reverseTransitionDuration: const Duration(milliseconds: 200),
-    ));
+    if (widget.onDone != null) {
+      widget.onDone!();
+    } else {
+      Navigator.of(context).pushReplacement(PageRouteBuilder(
+        pageBuilder:        (_, __, ___) => widget.nextScreen!,
+        transitionsBuilder: (_, anim, __, child) =>
+            FadeTransition(opacity: anim, child: child),
+        transitionDuration:        const Duration(milliseconds: 250),
+        reverseTransitionDuration: const Duration(milliseconds: 200),
+      ));
+    }
   }
 
   @override
