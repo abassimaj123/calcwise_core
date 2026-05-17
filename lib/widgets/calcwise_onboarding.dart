@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Returns true if onboarding has been completed for [appKey].
-/// Key is namespaced to avoid collisions between apps on the same device.
 Future<bool> isOnboardingComplete(String appKey) async {
   final prefs = await SharedPreferences.getInstance();
   return prefs.getBool('${appKey}_onboarding_complete') ?? false;
@@ -22,100 +21,101 @@ Future<void> markOnboardingComplete(String appKey) async {
 // Data model
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Content for a single onboarding page.
+/// Content for a single onboarding page with multi-locale support.
 ///
-/// Page renders:  [emoji container] → [title] → [subtitle]
-///   then, if provided: [pills] or [bullets card] or [customWidget]
+/// [title] / [subtitle] / [pills] / [bullets] are the EN defaults.
+/// Provide [titleFr] / [subtitleFr] etc. to override for French devices.
+/// Provide [titleEs] / [subtitleEs] etc. to override for Spanish devices.
+/// [bulletIcons] maps 1-to-1 with [bullets] — specific icon per feature row.
 class OnboardingPage {
-  /// Large emoji displayed in the coloured hero container (e.g. '🏠').
-  final String emoji;
+  /// Hero icon shown in the top container. Branded over emoji for consistency.
+  final IconData icon;
 
-  /// Bold headline (≤ 6 words works best).
+  // EN (default)
   final String title;
-
-  /// Supporting sentence shown below the title.
   final String subtitle;
-
-  /// Feature pill chips shown in a Wrap (page 1 style).
-  /// Supply [pills] OR [bullets] OR [customWidget] — not multiple.
   final List<String>? pills;
-
-  /// ✓ checklist items shown in a premium card (page 3 style).
   final List<String>? bullets;
 
-  /// Fully custom widget rendered below the subtitle.
+  // FR overrides
+  final String? titleFr;
+  final String? subtitleFr;
+  final List<String>? pillsFr;
+  final List<String>? bulletsFr;
+
+  // ES overrides
+  final String? titleEs;
+  final String? subtitleEs;
+  final List<String>? pillsEs;
+  final List<String>? bulletsEs;
+
+  /// Specific icon per bullet item (index-matched to [bullets]).
+  /// If null or shorter than [bullets], falls back to check_circle_rounded.
+  final List<IconData>? bulletIcons;
+
+  /// Fully custom widget rendered below the subtitle (any locale).
   final Widget? customWidget;
 
-  /// Tint for the emoji container. Falls back to [ColorScheme.primary].
+  /// Tint for the hero container. Falls back to [ColorScheme.primary].
   final Color? containerColor;
 
   const OnboardingPage({
-    required this.emoji,
+    required this.icon,
     required this.title,
     required this.subtitle,
     this.pills,
     this.bullets,
+    this.titleFr,
+    this.subtitleFr,
+    this.pillsFr,
+    this.bulletsFr,
+    this.titleEs,
+    this.subtitleEs,
+    this.pillsEs,
+    this.bulletsEs,
+    this.bulletIcons,
     this.customWidget,
     this.containerColor,
   });
+
+  /// Resolve title for the given language code.
+  String resolvedTitle(String lang) {
+    if (lang == 'fr' && titleFr != null) return titleFr!;
+    if (lang == 'es' && titleEs != null) return titleEs!;
+    return title;
+  }
+
+  /// Resolve subtitle for the given language code.
+  String resolvedSubtitle(String lang) {
+    if (lang == 'fr' && subtitleFr != null) return subtitleFr!;
+    if (lang == 'es' && subtitleEs != null) return subtitleEs!;
+    return subtitle;
+  }
+
+  /// Resolve pills for the given language code.
+  List<String>? resolvedPills(String lang) {
+    if (lang == 'fr' && pillsFr != null) return pillsFr;
+    if (lang == 'es' && pillsEs != null) return pillsEs;
+    return pills;
+  }
+
+  /// Resolve bullets for the given language code.
+  List<String>? resolvedBullets(String lang) {
+    if (lang == 'fr' && bulletsFr != null) return bulletsFr;
+    if (lang == 'es' && bulletsEs != null) return bulletsEs;
+    return bullets;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CalcwiseOnboarding widget
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Drop-in onboarding shell for all Calcwise apps.
-///
-/// Usage — inside the app's thin `onboarding_screen.dart`:
-/// ```dart
-/// class OnboardingScreen extends StatelessWidget {
-///   final Widget nextScreen;
-///   const OnboardingScreen({super.key, required this.nextScreen});
-///
-///   @override
-///   Widget build(BuildContext context) => CalcwiseOnboarding(
-///     appKey:     'mortgageus',
-///     nextScreen: nextScreen,
-///     pages: [
-///       OnboardingPage(
-///         emoji:    '🏠',
-///         title:    'Your Smart\nMortgage Calculator',
-///         subtitle: 'Monthly payment, amortization & more.',
-///         pills:    ['51 States', '2025 Rates', 'Charts'],
-///       ),
-///       OnboardingPage(
-///         emoji:    '📊',
-///         title:    'Compare Scenarios',
-///         subtitle: 'Switch loan types instantly and see the difference.',
-///         containerColor: Colors.indigo,
-///       ),
-///       OnboardingPage(
-///         emoji:    '⭐',
-///         title:    'Go Premium',
-///         subtitle: 'One purchase, unlimited access.',
-///         bullets:  ['No ads', 'Unlimited history', 'Export to PDF'],
-///       ),
-///     ],
-///   );
-/// }
-/// ```
 class CalcwiseOnboarding extends StatefulWidget {
-  /// Short lowercase app identifier — must match [CalcwiseFreemium.appKey].
   final String appKey;
-
-  /// Pages of content (usually 3).
   final List<OnboardingPage> pages;
-
-  /// Screen shown after onboarding completes / is skipped.
-  /// Supply either [nextScreen] or [onDone] — not both.
   final Widget? nextScreen;
-
-  /// Called when onboarding completes or is skipped.
-  /// Use this when the destination uses named routes (e.g. apps with private _MainShell).
-  /// Supply either [onDone] or [nextScreen] — not both.
   final VoidCallback? onDone;
-
-  /// Whether to show a "Skip" link on every page except the last.
   final bool showSkip;
 
   const CalcwiseOnboarding({
@@ -138,6 +138,20 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
 
   int get _last => widget.pages.length - 1;
 
+  /// Device language code — resolved once after first frame.
+  String _lang = 'en';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Resolve locale from Flutter's Localizations (set by MaterialApp).
+    // Falls back to 'en' if not available.
+    final locale = Localizations.maybeLocaleOf(context);
+    if (locale != null) {
+      _lang = locale.languageCode;
+    }
+  }
+
   void _next() {
     if (_page < _last) {
       _ctrl.nextPage(
@@ -145,11 +159,6 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
     } else {
       _finish();
     }
-  }
-
-  void _back() {
-    _ctrl.previousPage(
-        duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
   }
 
   Future<void> _finish() async {
@@ -174,6 +183,24 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
     super.dispose();
   }
 
+  String get _getStartedLabel {
+    if (_lang == 'fr') return 'Commencer';
+    if (_lang == 'es') return 'Comenzar';
+    return 'Get Started';
+  }
+
+  String get _nextLabel {
+    if (_lang == 'fr') return 'Suivant';
+    if (_lang == 'es') return 'Siguiente';
+    return 'Next';
+  }
+
+  String get _skipLabel {
+    if (_lang == 'fr') return 'Passer';
+    if (_lang == 'es') return 'Omitir';
+    return 'Skip';
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -183,11 +210,10 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
       backgroundColor: cs.surface,
       body: SafeArea(
         child: Column(children: [
-          // ── Top bar: dots + skip ──────────────────────────────────────────
+          // ── Top bar: dots + skip (always visible) ─────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(children: [
-              // Animated pill dots
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: List.generate(widget.pages.length, (i) {
@@ -197,20 +223,19 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
                     width:  _page == i ? 22 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: _page == i
-                          ? cs.primary
-                          : cs.outlineVariant,
+                      color: _page == i ? cs.primary : cs.outlineVariant,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );
                 }),
               ),
               const Spacer(),
-              // Skip — hidden on last page
-              if (widget.showSkip && !isLast)
+              // Skip is always visible — including the last slide — so users
+              // who don't want the full pitch can bail at any moment.
+              if (widget.showSkip)
                 TextButton(
                   onPressed: _finish,
-                  child: Text('Skip',
+                  child: Text(_skipLabel,
                       style: TextStyle(
                           color: cs.onSurfaceVariant,
                           fontWeight: FontWeight.w500)),
@@ -224,53 +249,35 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
               controller: _ctrl,
               onPageChanged: (i) => setState(() => _page = i),
               children: widget.pages
-                  .map((p) => _OnboardingPageView(page: p))
+                  .map((p) => _OnboardingPageView(page: p, lang: _lang))
                   .toList(),
             ),
           ),
 
-          // ── Navigation buttons ────────────────────────────────────────────
+          // ── Navigation: single full-width Next/Get Started button ────────
+          // Back button removed — PageView swipe handles going back, and
+          // dropping it gives the CTA more visual weight on every slide.
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-            child: Row(children: [
-              if (_page > 0) ...[
-                SizedBox(
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: _back,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: cs.outline),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                    ),
-                    child: Icon(Icons.arrow_back_rounded,
-                        color: cs.onSurfaceVariant),
-                  ),
+            child: SizedBox(
+              height: 52,
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _next,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: cs.primary,
+                  foregroundColor: cs.onPrimary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
                 ),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: SizedBox(
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _next,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: cs.primary,
-                      foregroundColor: cs.onPrimary,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      isLast ? 'Get Started' : 'Next',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
+                child: Text(
+                  isLast ? _getStartedLabel : _nextLabel,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
-            ]),
+            ),
           ),
         ]),
       ),
@@ -284,19 +291,24 @@ class _CalcwiseOnboardingState extends State<CalcwiseOnboarding> {
 
 class _OnboardingPageView extends StatelessWidget {
   final OnboardingPage page;
-  const _OnboardingPageView({required this.page});
+  final String lang;
+  const _OnboardingPageView({required this.page, required this.lang});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final containerColor = page.containerColor ?? cs.primary;
+    final resolvedPills   = page.resolvedPills(lang);
+    final resolvedBullets = page.resolvedBullets(lang);
 
+    // Entrance animation: fade-in + slide-up keyed by page identity so it
+    // replays whenever the user lands on a new slide.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Hero emoji container
+          // Hero icon container
           Container(
             width: 120,
             height: 120,
@@ -312,76 +324,106 @@ class _OnboardingPageView extends StatelessWidget {
               ],
             ),
             child: Center(
-              child: Text(page.emoji,
-                  style: const TextStyle(fontSize: 56)),
+              child: Icon(
+                page.icon,
+                size: 64,
+                color: cs.onPrimary,
+              ),
             ),
           ),
 
           const SizedBox(height: 36),
 
-          // Title
-          Text(
-            page.title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: cs.onSurface,
-              height: 1.25,
+          // Animated block: title + subtitle + supporting content fade up
+          // together on slide entry for a polished feel.
+          TweenAnimationBuilder<double>(
+            key: ValueKey(page.title),
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 450),
+            curve: Curves.easeOutCubic,
+            builder: (context, t, child) {
+              return Opacity(
+                opacity: t,
+                child: Transform.translate(
+                  offset: Offset(0, (1 - t) * 16),
+                  child: child,
+                ),
+              );
+            },
+            child: Column(
+              children: [
+                // Title
+                Text(
+                  page.resolvedTitle(lang),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: cs.onSurface,
+                    height: 1.25,
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Subtitle
+                Text(
+                  page.resolvedSubtitle(lang),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: cs.onSurfaceVariant,
+                    height: 1.55,
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // Pills
+                if (resolvedPills != null && resolvedPills.isNotEmpty)
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
+                    children: resolvedPills
+                        .map((p) => _FeaturePill(label: p))
+                        .toList(),
+                  ),
+
+                // Premium bullets card
+                if (resolvedBullets != null && resolvedBullets.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: cs.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: cs.primary.withValues(alpha: 0.35)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: List.generate(resolvedBullets.length, (i) {
+                        final icon = (page.bulletIcons != null &&
+                                i < page.bulletIcons!.length)
+                            ? page.bulletIcons![i]
+                            : Icons.check_circle_rounded;
+                        return Padding(
+                          padding: EdgeInsets.only(
+                              bottom:
+                                  i < resolvedBullets.length - 1 ? 12 : 0),
+                          child: _BulletRow(
+                              label: resolvedBullets[i], icon: icon, cs: cs),
+                        );
+                      }),
+                    ),
+                  ),
+
+                // Custom widget
+                if (page.customWidget != null) page.customWidget!,
+              ],
             ),
           ),
-
-          const SizedBox(height: 14),
-
-          // Subtitle
-          Text(
-            page.subtitle,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 15,
-              color: cs.onSurfaceVariant,
-              height: 1.55,
-            ),
-          ),
-
-          const SizedBox(height: 28),
-
-          // Pills
-          if (page.pills != null && page.pills!.isNotEmpty)
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: page.pills!
-                  .map((p) => _FeaturePill(label: p))
-                  .toList(),
-            ),
-
-          // Premium bullets card
-          if (page.bullets != null && page.bullets!.isNotEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: cs.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: cs.primary.withValues(alpha: 0.35)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: page.bullets!
-                    .expand((b) => [
-                          _BulletRow(label: b, cs: cs),
-                          if (b != page.bullets!.last)
-                            const SizedBox(height: 12),
-                        ])
-                    .toList(),
-              ),
-            ),
-
-          // Custom widget
-          if (page.customWidget != null) page.customWidget!,
         ],
       ),
     );
@@ -419,13 +461,14 @@ class _FeaturePill extends StatelessWidget {
 
 class _BulletRow extends StatelessWidget {
   final String label;
+  final IconData icon;
   final ColorScheme cs;
-  const _BulletRow({required this.label, required this.cs});
+  const _BulletRow({required this.label, required this.icon, required this.cs});
 
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Icon(Icons.check_circle_rounded, color: cs.primary, size: 20),
+      Icon(icon, color: cs.primary, size: 20),
       const SizedBox(width: 10),
       Expanded(
         child: Text(

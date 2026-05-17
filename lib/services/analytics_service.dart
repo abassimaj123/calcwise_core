@@ -21,7 +21,9 @@ class CalcwiseAnalytics {
   /// Short identifier included in every event — e.g. 'MortgageUS', 'JobOfferUS'.
   final String appName;
 
-  final _fa = FirebaseAnalytics.instance;
+  // late: deferred until first access — avoids Firebase.initializeApp() in tests
+  // (kDebugMode = true in tests, so log() returns early and _fa is never touched)
+  late final _fa = FirebaseAnalytics.instance;
 
   /// Enable/disable analytics collection based on build mode.
   Future<void> initialize() async {

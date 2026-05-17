@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'freemium_service.dart';
 import 'analytics_service.dart';
+import 'review_service.dart';
 
 /// Notifier for IAP errors — lets UI show a snackbar without BuildContext.
 final iapErrorNotifier = ValueNotifier<String?>(null);
@@ -119,6 +120,7 @@ class CalcwiseIAP {
           analytics.logPurchaseCompleted();
           analytics.setUserPremium(true);
           onPurchaseCompleted?.call();
+          CalcwiseReviewService.instance.requestAfterPremium();
           debugPrint('[IAP] premium activated');
 
         case PurchaseStatus.restored:

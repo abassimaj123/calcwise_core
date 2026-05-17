@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../theme/calcwise_theme.dart';
+import '../theme/tokens/tokens.dart';
+import '_paywall_price.dart';
 
 class PaywallSoft extends StatelessWidget {
   final String featureTitle, featureSubtitle;
   final bool isSpanish;
   final VoidCallback onUnlock;
   final VoidCallback? onMaybeLater; // null = no dismiss button shown
+  final String? priceLabel;
   const PaywallSoft({
     super.key, required this.featureTitle, required this.featureSubtitle,
     this.isSpanish = false, required this.onUnlock, this.onMaybeLater,
+    this.priceLabel,
   });
 
   /// Show the soft paywall as a modal bottom sheet.
@@ -21,24 +25,26 @@ class PaywallSoft extends StatelessWidget {
     String? priceLabel,
     VoidCallback? onUnlock,
   }) async {
+    // Auto-inject global price if caller didn't pass one
+    final effectivePrice = priceLabel ?? globalPaywallPrice.value;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       isDismissible: true,
       builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewPadding.bottom),
+        padding: EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.lg + MediaQuery.of(ctx).viewPadding.bottom),
         child: PaywallSoft(
           isSpanish: isSpanish,
           featureTitle: featureTitle ??
               (isSpanish ? 'Función Premium' : 'Premium Feature'),
           featureSubtitle: featureSubtitle ??
               (isSpanish ? 'Desbloquea para continuar' : 'Unlock to continue'),
+          priceLabel: effectivePrice,
           onUnlock: () {
             Navigator.of(ctx).pop();
             onUnlock?.call();
           },
-          onMaybeLater: () => Navigator.of(ctx).pop(),
         ),
       ),
     );
@@ -47,58 +53,44 @@ class PaywallSoft extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ct = CalcwiseTheme.of(context);
-    final maybeLaterLabel = isSpanish ? 'Quizás luego' : 'Maybe later';
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: ct.surfaceHigh,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ct.primary.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: [BoxShadow(
+          color: Colors.black.withValues(alpha: 0.12),
+          blurRadius: 16, offset: const Offset(0, 4))],
       ),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          Container(
-            width: 40, height: 40,
+      child: Row(children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(featureTitle,
+              style: TextStyle(fontSize: AppTextSize.body, fontWeight: FontWeight.w600, color: ct.textPrimary)),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(featureSubtitle,
+              style: TextStyle(fontSize: AppTextSize.sm, color: ct.textSecondary)),
+        ])),
+        const SizedBox(width: AppSpacing.md),
+        GestureDetector(
+          onTap: onUnlock,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.smPlus),
             decoration: BoxDecoration(
-                gradient: ct.ctaGradient,
-                borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.lock_outline, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(featureTitle,
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ct.textPrimary)),
-            const SizedBox(height: 2),
-            Text(featureSubtitle,
-                style: TextStyle(fontSize: 12, color: ct.textSecondary)),
-          ])),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onUnlock,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                gradient: ct.ctaGradient,
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: [BoxShadow(
-                  color: ct.primary.withValues(alpha: 0.35),
-                  blurRadius: 10, offset: const Offset(0, 3))],
-              ),
-              child: Text(isSpanish ? 'Ver' : 'Unlock',
-                  style: const TextStyle(color: Colors.white, fontSize: 12,
-                      fontWeight: FontWeight.w700)),
+              gradient: ct.ctaGradient,
+              borderRadius: BorderRadius.circular(AppRadius.mdPlus),
+              boxShadow: [BoxShadow(
+                color: ct.primary.withValues(alpha: 0.35),
+                blurRadius: 10, offset: const Offset(0, 3))],
             ),
+            child: Text(
+                priceLabel != null
+                    ? (isSpanish ? 'Desbloquear — $priceLabel' : 'Unlock — $priceLabel')
+                    : (isSpanish ? 'Desbloquear' : 'Unlock'),
+                style: const TextStyle(color: Colors.white, fontSize: AppTextSize.body,
+                    fontWeight: FontWeight.w700)),
           ),
-        ]),
-        if (onMaybeLater != null) ...[
-          const SizedBox(height: 8),
-          TextButton(
-            onPressed: onMaybeLater,
-            child: Text(maybeLaterLabel,
-                style: TextStyle(fontSize: 12, color: ct.textSecondary)),
-          ),
-        ],
+        ),
       ]),
     );
   }

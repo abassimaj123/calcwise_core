@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/calcwise_theme.dart';
+import '../theme/tokens/tokens.dart';
+import '_paywall_price.dart';
 
 class PaywallHard extends StatelessWidget {
   final bool isSpanish;
@@ -22,43 +24,49 @@ class PaywallHard extends StatelessWidget {
     final cta = isSpanish
         ? 'Desbloquear Premium${priceLabel != null ? ' — $priceLabel' : ''}'
         : 'Unlock Premium${priceLabel != null ? ' — $priceLabel' : ''}';
+    final displayedPrice = priceLabel ?? '\$2.99';
+    final subtitle = isSpanish
+        ? '$displayedPrice • Compra única · Sin suscripción'
+        : '$displayedPrice • One-time purchase · No subscription';
 
     return Container(
       decoration: BoxDecoration(
         color: ct.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xxl)),
       ),
-      padding: EdgeInsets.fromLTRB(24, 12, 24, 32 + MediaQuery.of(context).viewPadding.bottom),
+      padding: EdgeInsets.fromLTRB(AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxl, AppSpacing.xxxl + MediaQuery.of(context).viewPadding.bottom),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 40, height: 4,
-            decoration: BoxDecoration(color: ct.cardBorder,
-                borderRadius: BorderRadius.circular(2))),
-        const SizedBox(height: 24),
+        // Drag handle removed — sheet is not draggable (enableDrag: false).
         Container(
           width: 72, height: 72,
-          decoration: BoxDecoration(gradient: ct.ctaGradient,
-              borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(
+              color: ct.primary,
+              borderRadius: BorderRadius.circular(AppRadius.xl)),
           child: const Icon(Icons.workspace_premium_rounded,
               color: Colors.white, size: 36),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: AppSpacing.xl),
         Text(t['title']!,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+            style: TextStyle(fontSize: AppTextSize.titleMd, fontWeight: FontWeight.w800,
                 color: ct.textPrimary),
             textAlign: TextAlign.center),
-        const SizedBox(height: 8),
-        Text(t['subtitle']!,
-            style: TextStyle(fontSize: 14, color: ct.textSecondary, height: 1.5),
+        const SizedBox(height: AppSpacing.sm),
+        Text(subtitle,
+            style: TextStyle(
+                fontSize: AppTextSize.body,
+                fontWeight: FontWeight.w600,
+                color: ct.textSecondary,
+                height: 1.5),
             textAlign: TextAlign.center),
-        const SizedBox(height: 28),
+        const SizedBox(height: AppSpacing.xxlPlus),
         ...fs.map((f) => _FeatureRow(f, ct)),
-        const SizedBox(height: 28),
+        const SizedBox(height: AppSpacing.xxlPlus),
         SizedBox(
           width: double.infinity,
           child: Container(
             decoration: BoxDecoration(
               gradient: ct.ctaGradient,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(AppRadius.xl),
               boxShadow: [BoxShadow(color: ct.primary.withValues(alpha: 0.4),
                   blurRadius: 16, offset: const Offset(0, 4))],
             ),
@@ -66,21 +74,28 @@ class PaywallHard extends StatelessWidget {
               onPressed: onPurchase,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent, shadowColor: Colors.transparent,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(AppRadius.xl)),
               ),
               child: Text(cta, style: const TextStyle(color: Colors.white,
-                  fontSize: 16, fontWeight: FontWeight.w700)),
+                  fontSize: AppTextSize.bodyLg, fontWeight: FontWeight.w700)),
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         TextButton(onPressed: onDismiss,
             child: Text(t['dismiss']!,
-                style: TextStyle(color: ct.textSecondary, fontSize: 13))),
+                style: TextStyle(color: ct.textSecondary, fontSize: AppTextSize.md))),
       ]),
     );
+  }
+
+  /// Register the app's IAP localizedPrice notifier once (in IAPService.initialize()).
+  /// All subsequent show() calls will automatically display the correct price.
+  static void registerPrice(ValueNotifier<String?> notifier) {
+    notifier.addListener(() => globalPaywallPrice.value = notifier.value);
+    globalPaywallPrice.value = notifier.value;
   }
 
   /// Show the hard paywall as a modal bottom sheet.
@@ -92,6 +107,8 @@ class PaywallHard extends StatelessWidget {
     String? savingsLabel,
     VoidCallback? onPurchase,
   }) async {
+    // Auto-inject global price if caller didn't pass one
+    final effectivePrice = priceLabel ?? globalPaywallPrice.value;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -101,7 +118,7 @@ class PaywallHard extends StatelessWidget {
       builder: (_) => PaywallHard(
         isSpanish: isSpanish,
         features: features,
-        priceLabel: priceLabel,
+        priceLabel: effectivePrice,
         onPurchase: () {
           Navigator.of(context).pop();
           onPurchase?.call();
@@ -112,10 +129,8 @@ class PaywallHard extends StatelessWidget {
   }
 
   static List<String> _defaultFeatures(bool es) => es
-      ? ['📊  Análisis detallado', '📈  Proyecciones', '📄  Exportar PDF',
-         '🔄  Uso ilimitado',      '🚫  Sin anuncios']
-      : ['📊  Detailed analysis',  '📈  Projections', '📄  PDF export',
-         '🔄  Unlimited use',      '🚫  No ads'];
+      ? ['Análisis detallado', 'Exportar PDF', 'Uso ilimitado', 'Sin anuncios']
+      : ['Detailed analysis', 'PDF export', 'Unlimited use', 'No ads'];
 
   static const _en = {'title':'Unlock Full Analysis',
     'subtitle':'Get the complete picture with all premium features.','dismiss':'Not now'};
@@ -128,12 +143,12 @@ class _FeatureRow extends StatelessWidget {
   const _FeatureRow(this.text, this.ct);
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 5),
+    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
     child: Row(children: [
-      Icon(Icons.check_circle, color: ct.successGreen, size: 18),
-      const SizedBox(width: 12),
+      Icon(Icons.check_circle_rounded, color: ct.successGreen, size: 18),
+      const SizedBox(width: AppSpacing.md),
       Expanded(child: Text(text,
-          style: TextStyle(fontSize: 14, color: ct.textPrimary))),
+          style: TextStyle(fontSize: AppTextSize.body, color: ct.textPrimary))),
     ]),
   );
 }

@@ -17,6 +17,9 @@ class AppRadius {
   /// 8px — medium rounding (buttons, input fields)
   static const double md = 8.0;
 
+  /// 10px — between md and lg
+  static const double mdPlus = 10.0;
+
   /// 12px — card rounding
   static const double lg = 12.0;
 

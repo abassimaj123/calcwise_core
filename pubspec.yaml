@@ -18,3 +18,5 @@ dependencies:
   in_app_review:         ^2.0.9
   shared_preferences:    ^2.3.5
   intl:                  ^0.20.0
+  flutter_local_notifications: ^18.0.1
+  pdf:                   ^3.11.0

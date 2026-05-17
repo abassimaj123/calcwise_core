@@ -6,3 +6,4 @@
 export 'spacing_tokens.dart';
 export 'typography_tokens.dart';
 export 'border_radius_tokens.dart';
+export 'motion_tokens.dart';

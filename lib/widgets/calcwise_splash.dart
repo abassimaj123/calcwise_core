@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/calcwise_theme.dart';
+import '../theme/tokens/motion_tokens.dart';
 
 /// Plug-and-play animated splash screen.
 ///
@@ -43,7 +44,7 @@ class CalcwiseSplash extends StatefulWidget {
     this.badgeSymbol = '',
     this.badgeIcon,
     required this.onComplete,
-    this.durationMs = 3000,
+    this.durationMs = 1500,
     this.backgroundColor = const Color(0xFF0D0B1E),
   });
 
@@ -63,6 +64,11 @@ class _CalcwiseSplashState extends State<CalcwiseSplash>
   late final Animation<double> _glowOpacity, _glowSize;
   late final Animation<Offset>  _nameSlide;
   late final Animation<double>  _nameOpacity, _tagOpacity, _chipsOpacity;
+
+  bool _logoDone = false;
+  bool _contentDone = false;
+  bool _exited = false;
+  bool _canSkip = false;
 
   @override
   void initState() {
@@ -85,7 +91,7 @@ class _CalcwiseSplashState extends State<CalcwiseSplash>
         CurvedAnimation(parent: _logo, curve: const Interval(0.3, 1.0, curve: Curves.easeOut)));
 
     _content = AnimationController(vsync: this,
-        duration: const Duration(milliseconds: 800));
+        duration: const Duration(milliseconds: 400));
     _nameSlide   = Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero)
         .animate(CurvedAnimation(parent: _content,
         curve: const Interval(0.0, 0.55, curve: Curves.easeOutCubic)));
@@ -96,10 +102,35 @@ class _CalcwiseSplashState extends State<CalcwiseSplash>
     _chipsOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(parent: _content, curve: const Interval(0.5, 1.0, curve: Curves.easeOut)));
 
-    _logo.forward().then((_) { if (mounted) _content.forward(); });
-    Future.delayed(Duration(milliseconds: widget.durationMs), () {
-      if (mounted) widget.onComplete();
+    _logo.forward().then((_) {
+      if (!mounted) return;
+      _logoDone = true;
+      _content.forward().then((_) {
+        if (!mounted) return;
+        _contentDone = true;
+        // Stop the background glow loop once content has landed.
+        _bg.stop();
+      });
     });
+    // Enable tap-to-skip once the brand frame has had time to land.
+    Future.delayed(AppDuration.splashSkipThreshold, () {
+      if (mounted) _canSkip = true;
+    });
+    Future.delayed(Duration(milliseconds: widget.durationMs), () {
+      if (mounted) _exit();
+    });
+  }
+
+  void _exit() {
+    if (_exited) return;
+    _exited = true;
+    widget.onComplete();
+  }
+
+  void _trySkip() {
+    // Allow tap-to-skip only after the skip threshold (~800ms) so the user
+    // can't accidentally dismiss the brand frame the instant it appears.
+    if (_canSkip || _logoDone) _exit();
   }
 
   @override
@@ -126,7 +157,10 @@ class _CalcwiseSplashState extends State<CalcwiseSplash>
     final splashBg = widget.backgroundColor;
     return Scaffold(
       backgroundColor: splashBg,
-      body: Stack(children: [
+      body: GestureDetector(
+        onTap: _trySkip,
+        behavior: HitTestBehavior.opaque,
+        child: Stack(children: [
         // Background glow blob
         Positioned.fill(child: AnimatedBuilder(
           animation: _bg,
@@ -209,24 +243,10 @@ class _CalcwiseSplashState extends State<CalcwiseSplash>
           ),
 
           const Spacer(),
-
-          // Progress bar
-          AnimatedBuilder(animation: _content, builder: (_, __) =>
-            Opacity(opacity: _chipsOpacity.value,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 28),
-                child: SizedBox(width: 40, height: 3,
-                  child: LinearProgressIndicator(
-                    backgroundColor: Colors.white.withValues(alpha: 0.1),
-                    color: ct.accent,
-                    borderRadius: const BorderRadius.all(Radius.circular(2)),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          const SizedBox(height: 28),
         ])),
       ]),
+      ),
     );
   }
 }
@@ -247,9 +267,8 @@ class _Badge extends StatelessWidget {
     required this.glowSize,
   });
 
-  // Fallback letter split (e.g. 'AL' → 'A','L'; 'M$' → 'M','$')
-  String get _left  => badgeSymbol.isNotEmpty ? badgeSymbol[0] : '?';
-  String get _right => badgeSymbol.length > 1  ? badgeSymbol[1] : _left;
+  // Fallback: use only the first character — single, flat letter (no stacking).
+  String get _letter => badgeSymbol.isNotEmpty ? badgeSymbol[0] : '?';
 
   @override
   Widget build(BuildContext context) {
@@ -280,36 +299,19 @@ class _Badge extends StatelessWidget {
             blurRadius: 40, offset: const Offset(0, 12),
           )],
         ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          if (badgeIcon != null)
-            Icon(badgeIcon, color: Colors.white, size: 72)
-          else
-            Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-              _BadgeCircle(_left,  const Color(0xFFC8C3FF), ct.primaryDeep),
-              _BadgeCircle(_right, const Color(0xFFDEB8FF), ct.primaryDeep),
-            ]),
-          const SizedBox(height: 12),
-          Container(width: 72, height: 5,
-              decoration: BoxDecoration(color: ct.accent,
-                  borderRadius: BorderRadius.circular(3))),
-        ]),
+        child: Center(
+          child: badgeIcon != null
+              ? Icon(badgeIcon, color: Colors.white, size: 72)
+              : Text(_letter,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                  )),
+        ),
       ),
     ]);
   }
-}
-
-class _BadgeCircle extends StatelessWidget {
-  final String letter; final Color bg, fg;
-  const _BadgeCircle(this.letter, this.bg, this.fg);
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 46, height: 46,
-    decoration: BoxDecoration(shape: BoxShape.circle, color: bg,
-      boxShadow: [BoxShadow(color: bg.withValues(alpha: 0.5), blurRadius: 10)]),
-    child: Center(child: Text(letter,
-        style: TextStyle(color: fg, fontSize: 22,
-            fontWeight: FontWeight.w900, letterSpacing: -0.5))),
-  );
 }
 
 class _Chip extends StatelessWidget {

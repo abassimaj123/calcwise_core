@@ -1,0 +1,30 @@
+<!--
+  Info.plist additions for {{APP_NAME}} ({{BUNDLE_ID}})
+
+  These keys must be merged into ios/Runner/Info.plist BEFORE the closing </dict>.
+  Do NOT replace the entire Info.plist — merge only.
+
+  Required for: AdMob ad serving, iOS 14+ ATT compliance, SKAdNetwork attribution.
+-->
+
+<!-- Google Mobile Ads — App ID from AdMob console (must match Firebase iOS app config) -->
+<key>GADApplicationIdentifier</key>
+<string>{{ADMOB_APP_ID}}</string>
+
+<!-- App Tracking Transparency prompt text — shown on first launch (iOS 14+) -->
+<key>NSUserTrackingUsageDescription</key>
+<string>This identifier will be used to deliver personalized ads to you.</string>
+
+<!-- SKAdNetwork — see SKAdNetworkItems.plist for the canonical list. -->
+<!-- Copy the entire <array> block from SKAdNetworkItems.plist below this comment. -->
+<key>SKAdNetworkItems</key>
+<array>
+  <!-- INSERT contents of SKAdNetworkItems.plist here -->
+</array>
+
+<!-- Optional: prevent automatic ATT prompt if you want to control timing in Swift -->
+<!-- (Leave commented unless you have a specific reason.) -->
+<!--
+<key>GADDelayAppMeasurementInit</key>
+<true/>
+-->

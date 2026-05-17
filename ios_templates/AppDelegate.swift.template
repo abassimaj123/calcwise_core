@@ -1,0 +1,45 @@
+// AppDelegate.swift — generated from calcwise_core/ios_templates
+// App: {{APP_NAME}}
+// Bundle ID: {{BUNDLE_ID}}
+// AdMob App ID: {{ADMOB_APP_ID}}
+//
+// This template wires up:
+//   - Firebase init (requires GoogleService-Info.plist in ios/Runner/)
+//   - Google Mobile Ads SDK
+//   - App Tracking Transparency (ATT) prompt — required by Apple for ad personalization
+//
+// Drop this in as `ios/Runner/AppDelegate.swift`. Re-run `pod install` after.
+
+import UIKit
+import Flutter
+import Firebase
+import GoogleMobileAds
+import AppTrackingTransparency
+import AdSupport
+
+@main
+@objc class AppDelegate: FlutterAppDelegate {
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+  ) -> Bool {
+    // 1. Firebase — must be first
+    FirebaseApp.configure()
+
+    // 2. Google Mobile Ads — App ID is read from Info.plist (GADApplicationIdentifier)
+    GADMobileAds.sharedInstance().start(completionHandler: nil)
+
+    // 3. ATT prompt — defer slightly so the splash UI can show first
+    if #available(iOS 14, *) {
+      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        ATTrackingManager.requestTrackingAuthorization { status in
+          // status is automatically respected by GMA SDK; no further action required
+          _ = status
+        }
+      }
+    }
+
+    GeneratedPluginRegistrant.register(with: self)
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+}

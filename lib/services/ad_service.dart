@@ -4,6 +4,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:flutter/foundation.dart';
 import 'freemium_service.dart';
 import 'analytics_service.dart';
+import 'review_service.dart';
 
 /// Per-app ad unit IDs.  Create one instance and pass it to [CalcwiseAdService].
 ///
@@ -120,6 +121,13 @@ class CalcwiseAdService {
 
   @Deprecated('Use onAction() instead — onCalculation() will be removed in v2.0')
   void onCalculation() => onAction();
+
+  /// Call when the user saves a calculation result.
+  /// Combines [onAction] (interstitial throttle) + review request after threshold.
+  void onSave() {
+    onAction();
+    CalcwiseReviewService.instance.requestAfterSave();
+  }
 
   // ── Interstitial on-demand ────────────────────────────────────────────────
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// Wraps a widget with a one-shot fade-in + slide-up entrance animation.
@@ -36,8 +37,9 @@ class CalcwisePageEntrance extends StatefulWidget {
 class _CalcwisePageEntranceState extends State<CalcwisePageEntrance>
     with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
-  bool _visible = false;
-  bool _started = false;
+  bool   _visible = false;
+  bool   _started = false;
+  Timer? _delayTimer;
 
   @override
   void initState() {
@@ -56,7 +58,7 @@ class _CalcwisePageEntranceState extends State<CalcwisePageEntrance>
   void _maybeStart() {
     if (_started || !mounted) return;
     _started = true;
-    Future.delayed(widget.delay, () {
+    _delayTimer = Timer(widget.delay, () {
       if (!mounted) return;
       setState(() => _visible = true); // triggers AnimatedOpacity → guaranteed visible
       _ctrl.forward();                 // optional slide animation
@@ -65,6 +67,7 @@ class _CalcwisePageEntranceState extends State<CalcwisePageEntrance>
 
   @override
   void dispose() {
+    _delayTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
@@ -102,7 +105,8 @@ class _CalcwiseStaggerItemState extends State<CalcwiseStaggerItem>
   late final AnimationController _ctrl;
   late final Animation<Offset>   _slide;
   // ignore: unused_field — kept for future opacity toggle without breaking API
-  bool _visible = true; // START VISIBLE — no initial blank flash
+  bool   _visible    = true; // START VISIBLE — no initial blank flash
+  Timer? _delayTimer;
 
   @override
   void initState() {
@@ -114,7 +118,7 @@ class _CalcwiseStaggerItemState extends State<CalcwiseStaggerItem>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final delay = widget.baseDelayMs + widget.index * widget.staggerMs;
-      Future.delayed(Duration(milliseconds: delay), () {
+      _delayTimer = Timer(Duration(milliseconds: delay), () {
         if (!mounted) return;
         _ctrl.forward();
       });
@@ -122,7 +126,11 @@ class _CalcwiseStaggerItemState extends State<CalcwiseStaggerItem>
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _delayTimer?.cancel();
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
